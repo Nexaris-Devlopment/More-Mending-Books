@@ -1,0 +1,19 @@
+name: Transfer
+version: '1.0-SNAPSHOT'
+main: org.transfer.transfer.Transfer
+api-version: '1.20'
+
+commands:
+  transfer:
+    description: Main Command
+
+permissions:
+  transfer:
+    description: A perm.
+    default: false
+  transfer.mending:
+    description: A perm.
+    default: false
+  transfer.help:
+    description: A perm.
+    default: false
