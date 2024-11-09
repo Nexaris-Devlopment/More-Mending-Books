@@ -48,16 +48,27 @@ public class TransferCommand implements CommandExecutor {
                 Chest chest = (Chest) player.getTargetBlockExact(5).getState();
                 Inventory chestInventory = chest.getInventory();
 
-                // Configuration settings
                 int requiredMendingItems = plugin.getConfig().getInt("requiredMendingItems", 10);
                 int requiredFishingRods = plugin.getConfig().getInt("requiredFishingRods", 15);
 
                 int mendingItemCount = 0;
                 int fishingRodCount = 0;
                 List<ItemStack> itemsToTransfer = new ArrayList<>();
+                boolean hasEnchantedBooks = false;
+                boolean hasOtherItems = false;
 
                 for (ItemStack item : chestInventory.getContents()) {
                     if (item != null && item.getType() != Material.AIR) {
+                        // Check if it's an enchanted book with mending
+                        if (item.getType() == Material.ENCHANTED_BOOK) {
+                            EnchantmentStorageMeta meta = (EnchantmentStorageMeta) item.getItemMeta();
+                            if (meta != null && meta.hasStoredEnchant(org.bukkit.enchantments.Enchantment.MENDING)) {
+                                hasEnchantedBooks = true;
+                                continue;
+                            }
+                        }
+
+                        // Check if the item contains mending enchantment
                         if (item.containsEnchantment(org.bukkit.enchantments.Enchantment.MENDING)) {
                             if (item.getType() == Material.FISHING_ROD) {
                                 fishingRodCount += item.getAmount();
@@ -65,12 +76,21 @@ public class TransferCommand implements CommandExecutor {
                                 mendingItemCount += item.getAmount();
                             }
                             itemsToTransfer.add(item);
+                        } else {
+                            hasOtherItems = true;
                         }
                     }
                 }
 
-                if (mendingItemCount >= requiredMendingItems || fishingRodCount >= requiredFishingRods) {
-                    // Clear items and add enchanted book
+                if (hasEnchantedBooks) {
+                    player.sendMessage("The chest contains enchanted books with mending, which cannot be transformed.");
+                } else if (hasOtherItems) {
+                    player.sendMessage("The chest contains invalid items. Only fishing rods with mending or other items with mending enchantment are allowed.");
+                } else if (mendingItemCount > requiredMendingItems || fishingRodCount > requiredFishingRods) {
+                    player.sendMessage("The chest contains more than the required items:\n- " +
+                            mendingItemCount + " items with mending\n- " +
+                            fishingRodCount + " fishing rods with mending.");
+                } else if (mendingItemCount >= requiredMendingItems || fishingRodCount >= requiredFishingRods) {
                     chestInventory.removeItem(itemsToTransfer.toArray(new ItemStack[0]));
                     ItemStack mendingBook = new ItemStack(Material.ENCHANTED_BOOK);
                     EnchantmentStorageMeta meta = (EnchantmentStorageMeta) mendingBook.getItemMeta();
@@ -87,7 +107,6 @@ public class TransferCommand implements CommandExecutor {
                     ConfigHandler.logTransfer(playerUUID, player.getName(), playerUUID.toString(),
                             itemsToTransfer, chestLocation, playerLocation);
 
-                    // Notify player and console
                     player.sendMessage("Transfer completed successfully!");
                     Bukkit.getConsoleSender().sendMessage("Transfer completed by " + player.getName() + " with items: " + itemsToTransfer);
                 } else {
