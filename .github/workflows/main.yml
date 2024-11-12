@@ -1,12 +1,47 @@
-name: Example
-uses: lowlighter/metrics@latest
-with:
-  template: repository
-  filename: metrics.repository.svg
-  token: ${{ secrets.TOKEN }}
-  user: lowlighter
-  repo: metrics
-  plugin_lines: yes
-  plugin_followup: yes
-  plugin_projects: yes
-  plugin_projects_repositories: lowlighter/metrics/projects/1
+name: Metrics
+on:
+  # Schedule daily updates
+  schedule: [{cron: "*/1 * * * *"}]
+  # (optional) Run workflow manually
+  workflow_dispatch:
+  # (optional) Run workflow when pushing on master/main
+  push: {branches: ["master", "main"]}
+
+jobs:
+  github-metrics:
+    runs-on: ubuntu-latest
+    environment: 
+      name: production
+    permissions:
+      contents: write
+    steps:
+      - name: Example
+        uses: lowlighter/metrics@latest
+        with:
+          template: repository
+          filename: metrics.repository.svg
+          token: ${{ secrets.METRICS_TOKEN_WITH_SCOPES }}
+          user: lowlighter
+          repo: metrics
+          plugin_lines: yes
+          plugin_followup: yes
+          plugin_projects: yes
+          plugin_projects_repositories: lowlighter/metrics/projects/1
+      - name: Recent activity
+        uses: lowlighter/metrics@latest
+        with:
+          filename: metrics.plugin.activity.svg
+          token: ${{ secrets.METRICS_TOKEN }}
+          base: ""
+          plugin_activity: yes
+          plugin_activity_limit: 10
+          plugin_activity_timestamps: yes
+          plugin_activity_days: 0
+          plugin_activity_filter: push, ref/create, ref/delete, star, pr, fork, issue
+          #plugin_activity_filter: issue, pr, release, fork, review, ref/create
+      - uses: lowlighter/metrics@latest
+        with:
+          filename: metrics.svg
+          token: ${{ secrets.METRICS_TOKEN }}
+
+
