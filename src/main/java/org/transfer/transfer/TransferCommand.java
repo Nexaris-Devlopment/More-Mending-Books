@@ -15,6 +15,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.bukkit.ChatColor;
 
 public class TransferCommand implements CommandExecutor {
 
@@ -27,20 +28,20 @@ public class TransferCommand implements CommandExecutor {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (args.length == 0) {
-            sender.sendMessage("Usage: /transfer <mending/help>");
+            sender.sendMessage(ChatColor.LIGHT_PURPLE + "Usage: /transfer <mending/help>");
             return true;
         }
 
         if (args[0].equalsIgnoreCase("mending")) {
             if (!(sender instanceof Player)) {
-                sender.sendMessage("Only players can run this command.");
+                sender.sendMessage(ChatColor.GREEN + "Only players can run this command.");
                 return true;
             }
 
             Player player = (Player) sender;
 
             if (!player.hasPermission("transfer.mending")) {
-                player.sendMessage("You do not have permission to use this command.");
+                player.sendMessage(ChatColor.DARK_RED + "You do not have permission to use this command.");
                 return true;
             }
 
@@ -83,11 +84,11 @@ public class TransferCommand implements CommandExecutor {
                 }
 
                 if (hasEnchantedBooks) {
-                    player.sendMessage("The chest contains enchanted books with mending, which cannot be transformed.");
+                    player.sendMessage(ChatColor.GOLD + "The chest contains enchanted books with mending, which cannot be transformed.");
                 } else if (hasOtherItems) {
-                    player.sendMessage("The chest contains invalid items. Only fishing rods with mending or other items with mending enchantment are allowed.");
+                    player.sendMessage( ChatColor.DARK_RED + "The chest contains invalid items. Only fishing rods with mending or other items with mending enchantment are allowed.");
                 } else if (mendingItemCount > requiredMendingItems || fishingRodCount > requiredFishingRods) {
-                    player.sendMessage("The chest contains more than the required items:\n- " +
+                    player.sendMessage(ChatColor.DARK_RED + "The chest contains more than the required items:\n- " +
                             mendingItemCount + " items with mending\n- " +
                             fishingRodCount + " fishing rods with mending.");
                 } else if (mendingItemCount >= requiredMendingItems || fishingRodCount >= requiredFishingRods) {
@@ -107,22 +108,22 @@ public class TransferCommand implements CommandExecutor {
                     ConfigHandler.logTransfer(playerUUID, player.getName(), playerUUID.toString(),
                             itemsToTransfer, chestLocation, playerLocation);
 
-                    player.sendMessage("Transfer completed successfully!");
+                    player.sendMessage(ChatColor.GREEN + "Transfer completed successfully!");
                     Bukkit.getConsoleSender().sendMessage("Transfer completed by " + player.getName() + " with items: " + itemsToTransfer);
                 } else {
-                    player.sendMessage("Not enough items with mending in the chest.");
+                    player.sendMessage(ChatColor.DARK_PURPLE + "Not enough items with mending in the chest.");
                 }
             } else {
-                player.sendMessage("You must be looking at a chest.");
+                player.sendMessage(ChatColor.DARK_RED + "You must be looking at a chest.");
             }
         } else if (args[0].equalsIgnoreCase("help")) {
             if (sender.hasPermission("transfer.help")) {
-                sender.sendMessage("Usage of /transfer command:\n- /transfer mending: Transforms items in a chest.\n- /transfer help: Shows this help message.");
+                sender.sendMessage(ChatColor.RED + "Usage of /transfer command:\n- /transfer mending: Transforms items in a chest.\n- /transfer help: Shows this help message.");
             } else {
-                sender.sendMessage("You do not have permission to view help.");
+                sender.sendMessage(ChatColor.DARK_RED + "You do not have permission to view help.");
             }
         } else {
-            sender.sendMessage("Invalid subcommand. Use /transfer help for help.");
+            sender.sendMessage(ChatColor.DARK_RED + "Invalid subcommand. Use /transfer help for help.");
         }
 
         return true;
