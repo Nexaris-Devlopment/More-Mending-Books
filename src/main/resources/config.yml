@@ -1,2 +1,38 @@
-requiredMendingItems: 10
-requiredMendingRods: 15
+settings:
+  enable-item-transfer: true
+  enable-rod-transfer: true
+  enable-console-logging: true
+  amounts:
+    # Default == 10
+    required-mending-items: 10
+    # Default == 15
+    required-rending-rods: 15
+
+
+
+
+# Placeholders
+messages:
+  system:
+    command-help: "§c1"
+    help-command: "§cUse /transfer <mending|help> for available commands."
+  player:
+    success-message: "§aTransfer successful!"
+    failure-message: "§cTransfer failed!"
+    not-looking-at-chest: "§cYou must be looking at a chest to use this command."
+    not-enough-items-message: "§cYou do not have enough items to complete the transfer."
+    has-mending-books: "§aYou have the required mending books."
+    too-many-items-message: "§cYou have too many items in your inventory."
+    wrong-items-message: "§cYou have the wrong items for this transfer."
+    no-permission-help-message: "§cYou do not have permission to use the help command."
+    no-permission-message: "§cYou do not have permission to use this command."
+  console:
+    not-player-error-message: "§cThis command can only be used by a player."
+    success-message: "§aTransfer successful!"
+    failure-message: "§cTransfer failed!"
+    has-mending-books: "§aPlayer has the required mending books."
+    not-enough-items-message: "§cPlayer does not have enough items to complete the transfer."
+    too-many-items-message: "§cPlayer has too many items in their inventory."
+    wrong-items-message: "§cPlayer has the wrong items for this transfer."
+    no-permission-help-message: "§cPlayer does not have permission to use the help command."
+    no-permission-message: "§cPlayer does not have permission to use this command."

@@ -14,118 +14,122 @@ import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.bukkit.ChatColor;
 
 public class TransferCommand implements CommandExecutor {
 
     private final Transfer plugin;
+    private boolean isConsoleLoggingEnabled;
 
     public TransferCommand(Transfer plugin) {
         this.plugin = plugin;
+
+        this.isConsoleLoggingEnabled = plugin.checkIsConsoleLoggingEnabled();
     }
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (args.length == 0) {
-            sender.sendMessage(ChatColor.LIGHT_PURPLE + "Usage: /transfer <mending/help>");
-            return true;
+             if (plugin.checkHasPermission(sender, "transfer.help", plugin.getConfig().getString("messages.player.no-permission-help-message"), isConsoleLoggingEnabled, plugin.getConfig().getString("messages.console.no-permission-help-message"))) {
+                 sender.sendMessage(Objects.requireNonNull(plugin.getConfig().getString("messages.system.help-command")));
+                 return true;
+             }
+            return false;
         }
-
         if (args[0].equalsIgnoreCase("mending")) {
             if (!(sender instanceof Player)) {
-                sender.sendMessage(ChatColor.GREEN + "Only players can run this command.");
+                sender.sendMessage(Objects.requireNonNull(plugin.getConfig().getString("not-player-error-message")));
+                return false;
+            }
+            if (plugin.checkHasPermission(sender, "transfer.mending", plugin.getConfig().getString("messages.player.no-permission-message"), isConsoleLoggingEnabled, plugin.getConfig().getString("messages.console.no-permission-message"))) {
+                sender.sendMessage(Objects.requireNonNull(plugin.getConfig().getString("messages.player.success-message")));
                 return true;
             }
-
             Player player = (Player) sender;
-
-            if (!player.hasPermission("transfer.mending")) {
-                player.sendMessage(ChatColor.DARK_RED + "You do not have permission to use this command.");
-                return true;
+            if (!(player.getTargetBlockExact(5) != null && player.getTargetBlockExact(5).getState() instanceof Chest)) {
+                sender.sendMessage(Objects.requireNonNull(plugin.getConfig().getString("messages.player.not-looking-at-chest")));
+                return false;
             }
+            Chest chest = (Chest) player.getTargetBlockExact(5).getState();
+            Inventory chestInventory = chest.getInventory();
+            int requiredMendingItems = plugin.getConfig().getInt("settings.amounts.required-mending-items", 10);
+            int requiredFishingRods = plugin.getConfig().getInt("settings.amounts.required-rending-rods", 15);
 
-            if (player.getTargetBlockExact(5) != null && player.getTargetBlockExact(5).getState() instanceof Chest) {
-                Chest chest = (Chest) player.getTargetBlockExact(5).getState();
-                Inventory chestInventory = chest.getInventory();
+            List<ItemStack> itemsToTransfer = new ArrayList<>();
+            int mendingItemCount = 0;
+            int fishingRodCount = 0;
+            boolean hasEnchantedBooks = false;
+            boolean hasOtherItems = false;
 
-                int requiredMendingItems = plugin.getConfig().getInt("requiredMendingItems", 10);
-                int requiredFishingRods = plugin.getConfig().getInt("requiredFishingRods", 15);
-
-                int mendingItemCount = 0;
-                int fishingRodCount = 0;
-                List<ItemStack> itemsToTransfer = new ArrayList<>();
-                boolean hasEnchantedBooks = false;
-                boolean hasOtherItems = false;
-
-                for (ItemStack item : chestInventory.getContents()) {
-                    if (item != null && item.getType() != Material.AIR) {
-                        // Check if it's an enchanted book with mending
-                        if (item.getType() == Material.ENCHANTED_BOOK) {
-                            EnchantmentStorageMeta meta = (EnchantmentStorageMeta) item.getItemMeta();
-                            if (meta != null && meta.hasStoredEnchant(org.bukkit.enchantments.Enchantment.MENDING)) {
-                                hasEnchantedBooks = true;
-                                continue;
-                            }
+            for (ItemStack item : chestInventory.getContents()) {
+                if (item != null && item.getType() != Material.AIR) {
+                    if (item.getType() == Material.ENCHANTED_BOOK) {
+                        EnchantmentStorageMeta meta = (EnchantmentStorageMeta) item.getItemMeta();
+                        if (meta != null && meta.hasStoredEnchant(org.bukkit.enchantments.Enchantment.MENDING)) {
+                            hasEnchantedBooks = true;
+                            continue;
                         }
-
-                        // Check if the item contains mending enchantment
-                        if (item.containsEnchantment(org.bukkit.enchantments.Enchantment.MENDING)) {
-                            if (item.getType() == Material.FISHING_ROD) {
-                                fishingRodCount += item.getAmount();
-                            } else {
-                                mendingItemCount += item.getAmount();
-                            }
-                            itemsToTransfer.add(item);
+                    }
+                    if (item.containsEnchantment(org.bukkit.enchantments.Enchantment.MENDING)) {
+                        if (item.getType() == Material.FISHING_ROD) {
+                            fishingRodCount += item.getAmount();
                         } else {
-                            hasOtherItems = true;
+                            mendingItemCount += item.getAmount();
                         }
+                        itemsToTransfer.add(item);
+                    } else {
+                        hasOtherItems = true;
                     }
                 }
-
-                if (hasEnchantedBooks) {
-                    player.sendMessage(ChatColor.GOLD + "The chest contains enchanted books with mending, which cannot be transformed.");
-                } else if (hasOtherItems) {
-                    player.sendMessage( ChatColor.DARK_RED + "The chest contains invalid items. Only fishing rods with mending or other items with mending enchantment are allowed.");
-                } else if (mendingItemCount > requiredMendingItems || fishingRodCount > requiredFishingRods) {
-                    player.sendMessage(ChatColor.DARK_RED + "The chest contains more than the required items:\n- " +
-                            mendingItemCount + " items with mending\n- " +
-                            fishingRodCount + " fishing rods with mending.");
-                } else if (mendingItemCount >= requiredMendingItems || fishingRodCount >= requiredFishingRods) {
-                    chestInventory.removeItem(itemsToTransfer.toArray(new ItemStack[0]));
-                    ItemStack mendingBook = new ItemStack(Material.ENCHANTED_BOOK);
-                    EnchantmentStorageMeta meta = (EnchantmentStorageMeta) mendingBook.getItemMeta();
-                    if (meta != null) {
-                        meta.addStoredEnchant(org.bukkit.enchantments.Enchantment.MENDING, 1, true);
-                        mendingBook.setItemMeta(meta);
-                    }
-                    chestInventory.addItem(mendingBook);
-
-                    // Logging the transaction
-                    UUID playerUUID = player.getUniqueId();
-                    Location chestLocation = chest.getLocation();
-                    Location playerLocation = player.getLocation();
-                    ConfigHandler.logTransfer(playerUUID, player.getName(), playerUUID.toString(),
-                            itemsToTransfer, chestLocation, playerLocation);
-
-                    player.sendMessage(ChatColor.GREEN + "Transfer completed successfully!");
-                    Bukkit.getConsoleSender().sendMessage("Transfer completed by " + player.getName() + " with items: " + itemsToTransfer);
-                } else {
-                    player.sendMessage(ChatColor.DARK_PURPLE + "Not enough items with mending in the chest.");
-                }
-            } else {
-                player.sendMessage(ChatColor.DARK_RED + "You must be looking at a chest.");
             }
-        } else if (args[0].equalsIgnoreCase("help")) {
-            if (sender.hasPermission("transfer.help")) {
-                sender.sendMessage(ChatColor.RED + "Usage of /transfer command:\n- /transfer mending: Transforms items in a chest.\n- /transfer help: Shows this help message.");
-            } else {
-                sender.sendMessage(ChatColor.DARK_RED + "You do not have permission to view help.");
+
+            if (hasEnchantedBooks) {
+                player.sendMessage(Objects.requireNonNull(plugin.getConfig().getString("messages.player.has-mending-books")));
+                if (plugin.checkIsConsoleLoggingEnabled()) { plugin.getLogger().info(Objects.requireNonNull(plugin.getConfig().getString("messages.console.has-mending-books")));}
+                return false;
             }
+            if (hasOtherItems) {
+                player.sendMessage(Objects.requireNonNull(plugin.getConfig().getString("messages.player.wrong-items-message")));
+                if (plugin.checkIsConsoleLoggingEnabled()) { plugin.getLogger().info(Objects.requireNonNull(plugin.getConfig().getString("messages.console.wrong-items-message")));}
+                return false;
+            }
+            if (mendingItemCount > requiredMendingItems || fishingRodCount > requiredFishingRods) {
+                player.sendMessage(Objects.requireNonNull(plugin.getConfig().getString("messages.player.too-many-items-message")));
+                if (plugin.checkIsConsoleLoggingEnabled()) { plugin.getLogger().info(Objects.requireNonNull(plugin.getConfig().getString("messages.console.too-many-items-message")));}
+                return false;
+            }
+            if (!(mendingItemCount >= requiredMendingItems || fishingRodCount >= requiredFishingRods)) {
+                player.sendMessage(Objects.requireNonNull(plugin.getConfig().getString("messages.player.not-enough-items-message")));
+                if (plugin.checkIsConsoleLoggingEnabled()) { plugin.getLogger().info(Objects.requireNonNull(plugin.getConfig().getString("messages.console.not-enough-items-message")));}
+                return false;
+            }
+            chestInventory.removeItem(itemsToTransfer.toArray(new ItemStack[0]));
+            ItemStack mendingBook = new ItemStack(Material.ENCHANTED_BOOK);
+            EnchantmentStorageMeta meta = (EnchantmentStorageMeta) mendingBook.getItemMeta();
+            if (meta != null) {
+                meta.addStoredEnchant(org.bukkit.enchantments.Enchantment.MENDING, 1, true);
+                mendingBook.setItemMeta(meta);
+            }
+            chestInventory.addItem(mendingBook);
+
+            // Logging the transaction
+            UUID playerUUID = player.getUniqueId();
+            Location chestLocation = chest.getLocation();
+            Location playerLocation = player.getLocation();
+            ConfigHandler.logTransfer(playerUUID, player.getName(), playerUUID.toString(), itemsToTransfer, chestLocation, playerLocation);
+            player.sendMessage(Objects.requireNonNull(plugin.getConfig().getString("messages.player.success-message")));
+            if (plugin.checkIsConsoleLoggingEnabled()) { plugin.getLogger().info(Objects.requireNonNull(plugin.getConfig().getString("messages.console.success-message")));}
+            return true;
+
         } else {
-            sender.sendMessage(ChatColor.DARK_RED + "Invalid subcommand. Use /transfer help for help.");
+            sender.sendMessage(Objects.requireNonNull(plugin.getConfig().getString("messages.player.failure-message")));
+            if (plugin.checkIsConsoleLoggingEnabled()) { plugin.getLogger().info(Objects.requireNonNull(plugin.getConfig().getString("messages.console.failure-message")));}
         }
 
         return true;
     }
+
+
 }
